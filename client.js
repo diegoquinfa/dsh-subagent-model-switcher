@@ -56,7 +56,7 @@ window.__ModuleLoader__.load({
 .sams-btn{appearance:none;border-radius:9px;padding:8px 16px;font-size:12.5px;cursor:pointer;
   border:1px solid var(--dsw-alias-border-l3,rgba(255,255,255,.16));background:transparent;color:var(--dsw-alias-label-primary,#ececf1)}
 .sams-btn:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.08))}
-.sams-btn[data-primary]{background:var(--dsw-alias-button-primary-fill,#3f6cd6);border-color:transparent;color:#fff}
+.sams-btn[data-primary]{background:#3f6cd6;border-color:transparent;color:#fff}
 .sams-btn[data-primary]:hover{filter:brightness(1.08)}
 .sams-btn[data-primary]:disabled{opacity:.5;cursor:default;filter:none}
 .sams-meta{display:flex;align-items:center;gap:8px;margin:0 22px 8px;color:var(--dsw-alias-label-tertiary,#8e8e99);font-size:11.5px}
