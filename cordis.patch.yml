@@ -1,0 +1,147 @@
+# dsh-subagent-model-switcher — bundle patch.
+#
+# Inserts the plugin row, one spawn provider per role (so the child's persisted
+# subagent descriptor names the role), one agent preset per role owning its
+# persona and tool surface, and one delegation tool per role joining that
+# preset. A profile that does not want the roles can delete the
+# `subagent-spawn-*`, `preset-gentle-*` and `tool-subagent-*` rows and keep only
+# the `subagent-model-switcher` row.
+- insert:
+    - id: subagent-model-switcher
+      name: 'dsh-subagent-model-switcher'
+
+    - id: subagent-spawn-worker
+      name: '@deepseek-ai/dsh-subagent-spawn-in-process'
+      config:
+        providerName: spawn-worker
+    - id: subagent-spawn-verify
+      name: '@deepseek-ai/dsh-subagent-spawn-in-process'
+      config:
+        providerName: spawn-verify
+    - id: subagent-spawn-explore
+      name: '@deepseek-ai/dsh-subagent-spawn-in-process'
+      config:
+        providerName: spawn-explore
+
+    - id: preset-gentle-worker
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: gentle-worker
+        name: Gentle AI Worker
+        description: Scoped implementation writer; edits code, runs authorized checks, returns review-ready evidence, never commits.
+        order: 10
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                You are the package-owned implementation writer for a Gentle AI workflow.
+
+                Implement only the scope the parent handed you, inside the edit surfaces the parent listed. Run only parent-authorized checks and report their observed output. Never delegate to subagents, never commit or push, and never invoke review tooling.
+
+                Return the files you changed, the checks you ran with their observed results, and anything left unverified.
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+
+    - id: preset-gentle-verify
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: gentle-verify
+        name: Gentle AI Verify
+        description: Read-only technical verification; runs only parent-authorized commands and reports observed evidence.
+        order: 11
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                You are the technical verifier for a Gentle AI workflow.
+
+                Inspect relevant evidence and run only the exact test, build, or lint commands the parent authorized. Never edit, fix, install, or mutate repository state; treat an unexpected mutation as a blocker to report, not to clean up.
+
+                Return the exact commands run, their observed results, supporting paths, blockers, and anything left unverified. Never claim a command ran or a check passed without observed output.
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              write: false
+              edit: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+
+    - id: preset-gentle-explore
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: gentle-explore
+        name: Gentle AI Explore
+        description: Read-only exploration and mapping; returns path and line evidence without mutating state.
+        order: 12
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |-
+                You are the read-only explorer for a Gentle AI workflow.
+
+                Map the relevant files, symbols, relationships, and uncertainty inside the scope the parent provided. Read and search only: no edits, no commands, no delegation.
+
+                Return compact path:line evidence, name what stayed unverified, and keep the summary short enough to act on.
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              write: false
+              edit: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+
+    - id: tool-subagent-worker
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: spawn-worker
+        toolName: subagent_worker
+        agentPreset: gentle-worker
+    - id: tool-subagent-verify
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: spawn-verify
+        toolName: subagent_verify
+        agentPreset: gentle-verify
+    - id: tool-subagent-explore
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: spawn-explore
+        toolName: subagent_explore
+        agentPreset: gentle-explore

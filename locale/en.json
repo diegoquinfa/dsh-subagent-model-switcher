@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Subagent Model Switcher",
+    "description": "Alt+K modal to pick the model and reasoning effort each subagent tool uses when it starts a child."
+  }
+}
