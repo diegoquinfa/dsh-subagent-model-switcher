@@ -97,8 +97,13 @@ junction and the plugin directory, then restart. Selections are stored in
 
 ## Configuration
 
-The plugin row accepts an optional `targets` array. Without it, these five are
-used:
+Targets are discovered at runtime from the live Loader tree: every enabled
+`@deepseek-ai/dsh-tool-subagent` row contributes a target, using its `toolName`
+as the id, its `provider` for delegation, and its `agentPreset` as the label.
+Adding a role is therefore a profile or patch change — never a plugin edit. The
+two base providers (`spawn`, `fork`) are always offered.
+
+An explicit `targets` array on the plugin row overrides discovery:
 
 ```yaml
 - id: subagent-model-switcher
@@ -120,7 +125,7 @@ used:
   `@deepseek-ai/dsh-subagent-spawn-in-process` (or the fork provider). The plugin
   identifies the child through the `provider` recorded in its persisted
   `subagent/descriptor`.
-- `id` is the settings key and the modal row identity.
+- `id` is the settings key and the modal row identity. Discovered targets use the row's `toolName`.
 - `tool` is the model-facing tool name, shown in the row.
 
 ### Keep only the modal
@@ -164,7 +169,8 @@ why the policy travels over the plugin's own loopback route instead.
 
 ## Troubleshooting
 
-- The host writes a trace to `$DSH_HOME/subagent-models.log`:
+- The host writes a trace to `$DSH_HOME/subagent-models.log`; its `apply` line lists
+  the targets discovery found:
   `apply`, `wrapper target`, `created <id>: descriptor=<provider>`,
   `installed <id>: <role> -> <provider>/<model>`, and `fold failed ...`.
 - If the modal opens but a row is empty, check that the provider in `targets`

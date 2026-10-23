@@ -27,7 +27,7 @@ const ROUTE = '/subagent-model-switcher'
 const MAX_BODY_BYTES = 64 * 1024
 
 /** Delegation providers shipped with the Harness and their model-facing tools. */
-const TARGETS = [
+const FALLBACK_TARGETS = [
   { id: 'subagent_worker', provider: 'spawn-worker', label: 'Gentle AI Worker', tool: 'subagent_worker' },
   { id: 'subagent_verify', provider: 'spawn-verify', label: 'Gentle AI Verify', tool: 'subagent_verify' },
   { id: 'subagent_explore', provider: 'spawn-explore', label: 'Gentle AI Explore', tool: 'subagent_explore' },
@@ -85,19 +85,69 @@ function toSelection(value) {
   }
 }
 
-export function apply(ctx) {
+export function apply(ctx, config) {
   // A broken local plugin must never be able to fail the whole profile boot:
   // report through the loader log and leave the session untouched instead.
   try {
-    install(ctx)
+    install(ctx, config)
   } catch (error) {
     ctx.logger?.error?.(error)
   }
 }
 
-function install(ctx) {
+/** Stored keys from an earlier build, mapped to the id discovery now derives. */
+const LEGACY_IDS = {
+  review_risk: 'subagent_review_risk',
+  review_readability: 'subagent_review_readability',
+  review_reliability: 'subagent_review_reliability',
+  review_resilience: 'subagent_review_resilience',
+}
+
+/** Providers the Harness ships at the host layer; always offered by the modal. */
+const BASE_TARGETS = [
+  { id: 'subagent', provider: 'spawn', label: 'Subagent', tool: 'subagent' },
+  { id: 'subagent_fork', provider: 'fork', label: 'Subagent fork', tool: 'subagent_fork' },
+]
+
+function install(ctx, config) {
   const home = process.env.DSH_HOME || join(homedir(), '.dsh')
   const file = join(home, 'subagent-models.json')
+
+  // Every enabled `dsh-tool-subagent` row in the live Loader tree contributes a
+  // target, so adding a role is a profile/patch change and never a plugin edit.
+  // An explicit `targets` config still wins over discovery.
+  const discoverTargets = () => {
+    const found = []
+    const seen = new Set()
+    try {
+      for (const entry of ctx.loader.entries()) {
+        const options = entry?.options
+        if (options?.name !== '@deepseek-ai/dsh-tool-subagent' || options.disabled === true) continue
+        const row = options.config ?? {}
+        const provider = row.provider
+        const tool = typeof row.toolName === 'string' && row.toolName !== '' ? row.toolName : 'subagent'
+        if (typeof provider !== 'string' || provider === '' || seen.has(provider)) continue
+        seen.add(provider)
+        found.push({
+          id: tool,
+          provider,
+          label: typeof row.agentPreset === 'string' && row.agentPreset !== '' ? row.agentPreset : tool,
+          tool,
+        })
+      }
+    } catch {
+      // a Loader that does not expose entries() degrades to the fallback list
+    }
+    return found
+  }
+
+  const currentTargets = () => {
+    if (Array.isArray(config?.targets) && config.targets.length > 0) return config.targets
+    const discovered = discoverTargets()
+    if (discovered.length === 0) return FALLBACK_TARGETS
+    const seen = new Set(discovered.map((target) => target.provider))
+    return [...discovered, ...BASE_TARGETS.filter((target) => !seen.has(target.provider))]
+  }
 
   const read = () => {
     try {
@@ -105,9 +155,9 @@ function install(ctx) {
       const raw = parsed?.selections
       if (raw === null || typeof raw !== 'object') return {}
       const result = {}
-      for (const target of TARGETS) {
-        const selection = toSelection(raw[target.id])
-        if (selection !== undefined) result[target.id] = selection
+      for (const [id, value] of Object.entries(raw)) {
+        const selection = toSelection(value)
+        if (selection !== undefined) result[LEGACY_IDS[id] ?? id] = selection
       }
       return result
     } catch {
@@ -134,7 +184,7 @@ function install(ctx) {
     selections = next
   }
 
-  trace(`apply: targets=${TARGETS.map((t) => t.id).join(',')} selections=${JSON.stringify(selections)}`)
+  trace(`apply: targets=${currentTargets().map((t) => t.id).join(',')} selections=${JSON.stringify(selections)}`)
 
   const handled = new WeakSet()
 
@@ -153,7 +203,7 @@ function install(ctx) {
     }
     trace(`created ${agent.id}: descriptor=${descriptor === undefined ? 'none' : descriptor.provider}`)
     if (descriptor === undefined) return
-    const target = TARGETS.find((candidate) => candidate.provider === descriptor.provider)
+    const target = currentTargets().find((candidate) => candidate.provider === descriptor.provider)
     if (target === undefined) return
     const selection = toSelection(selections[target.id])
     if (selection === undefined) {
@@ -219,8 +269,9 @@ function install(ctx) {
     }
     if (req.method === 'GET') {
       selections = read()
+      const targets = currentTargets()
       json(res, 200, {
-        targets: TARGETS.map((target) => ({ ...target })),
+        targets: targets.map((target) => ({ ...target })),
         selections,
       })
       return
@@ -235,7 +286,8 @@ function install(ctx) {
         const incoming = body?.selections
         if (incoming === null || typeof incoming !== 'object') throw new Error('expected { selections }')
         const next = { ...selections }
-        for (const target of TARGETS) {
+        const targets = currentTargets()
+        for (const target of targets) {
           if (!(target.id in incoming)) continue
           const value = incoming[target.id]
           if (value === null || value === undefined) {
@@ -247,7 +299,7 @@ function install(ctx) {
           next[target.id] = selection
         }
         write(next)
-        json(res, 200, { targets: TARGETS.length, selections })
+        json(res, 200, { targets: targets.length, selections })
       } catch (error) {
         json(res, 400, { error: error instanceof Error ? error.message : String(error) })
       }
@@ -259,6 +311,6 @@ function install(ctx) {
     'subagent-model-switcher: route',
   )
   ctx.logger?.info?.(
-    `subagent-model-switcher: ${TARGETS.map((target) => `${target.id}(${target.provider})`).join(', ')} on ${ROUTE}; store ${existsSync(file) ? file : `${file} (new)`}`,
+    `subagent-model-switcher: ${currentTargets().map((target) => `${target.id}(${target.provider})`).join(', ')} on ${ROUTE}; store ${existsSync(file) ? file : `${file} (new)`}`,
   )
 }
