@@ -5,8 +5,11 @@ Press **Alt+K** to open a modal that sets the model and reasoning effort each
 subagent delegation tool uses when it starts a child, with a live model
 catalogue, a last-good cache, and a guard against models that have disappeared.
 
-It also ships three ported **Gentle AI** roles as native Harness presets and
-tools: `subagent_worker`, `subagent_verify`, and `subagent_explore`.
+It also ships seven ported **Gentle AI** roles as native Harness presets and
+tools: the working roles `subagent_worker`, `subagent_verify`, and
+`subagent_explore`, plus the four read-only review lenses `subagent_review_risk`,
+`subagent_review_readability`, `subagent_review_reliability`, and
+`subagent_review_resilience`.
 
 ## Features
 
@@ -105,6 +108,10 @@ used:
       - { id: subagent_worker,  provider: spawn-worker,  label: Gentle AI Worker,  tool: subagent_worker }
       - { id: subagent_verify,  provider: spawn-verify,  label: Gentle AI Verify,  tool: subagent_verify }
       - { id: subagent_explore, provider: spawn-explore, label: Gentle AI Explore, tool: subagent_explore }
+      - { id: review_risk,          provider: spawn-review-risk,          label: Review Risk (R1),          tool: subagent_review_risk }
+      - { id: review_readability,   provider: spawn-review-readability,   label: Review Readability (R2),   tool: subagent_review_readability }
+      - { id: review_reliability,   provider: spawn-review-reliability,   label: Review Reliability (R3),   tool: subagent_review_reliability }
+      - { id: review_resilience,    provider: spawn-review-resilience,    label: Review Resilience (R4),    tool: subagent_review_resilience }
       - { id: subagent,         provider: spawn,         label: Subagent,         tool: subagent }
       - { id: subagent_fork,    provider: fork,          label: Subagent fork,    tool: subagent_fork }
 ```
@@ -118,9 +125,9 @@ used:
 
 ### Keep only the modal
 
-The bundle patch inserts the three roles as well. To keep only the modal, delete
-the `subagent-spawn-*`, `preset-gentle-*`, and `tool-subagent-*` rows from
-`cordis.patch.yml` (and the matching `targets` entries if you like). The modal
+The bundle patch inserts the roles as well. To keep only the modal, delete the
+`subagent-spawn-*`, `preset-gentle-*`, `preset-review-*`, and `tool-subagent-*`
+rows from `cordis.patch.yml` (and the matching `targets` entries if you like). The modal
 then covers whatever delegation tools your profile already mounts.
 
 ## Included roles
@@ -130,6 +137,10 @@ then covers whatever delegation tools your profile already mounts.
 | Worker | `subagent_worker` | `spawn-worker` | `gentle-worker` | fs (read/write/edit), search, shell, skill, todo |
 | Verify | `subagent_verify` | `spawn-verify` | `gentle-verify` | read-only fs, search, shell, todo |
 | Explore | `subagent_explore` | `spawn-explore` | `gentle-explore` | read-only fs, search, todo |
+| Risk (R1) | `subagent_review_risk` | `spawn-review-risk` | `review-risk` | read-only fs, search, todo |
+| Readability (R2) | `subagent_review_readability` | `spawn-review-readability` | `review-readability` | read-only fs, search, todo |
+| Reliability (R3) | `subagent_review_reliability` | `spawn-review-reliability` | `review-reliability` | read-only fs, search, todo |
+| Resilience (R4) | `subagent_review_resilience` | `spawn-review-resilience` | `review-resilience` | read-only fs, search, todo |
 
 Each role gets its own provider so the child's durable descriptor names the role,
 which is what lets the modal address it separately. The personas are adapted

@@ -31,6 +31,10 @@ const TARGETS = [
   { id: 'subagent_worker', provider: 'spawn-worker', label: 'Gentle AI Worker', tool: 'subagent_worker' },
   { id: 'subagent_verify', provider: 'spawn-verify', label: 'Gentle AI Verify', tool: 'subagent_verify' },
   { id: 'subagent_explore', provider: 'spawn-explore', label: 'Gentle AI Explore', tool: 'subagent_explore' },
+  { id: 'review_risk', provider: 'spawn-review-risk', label: 'Review Risk (R1)', tool: 'subagent_review_risk' },
+  { id: 'review_readability', provider: 'spawn-review-readability', label: 'Review Readability (R2)', tool: 'subagent_review_readability' },
+  { id: 'review_reliability', provider: 'spawn-review-reliability', label: 'Review Reliability (R3)', tool: 'subagent_review_reliability' },
+  { id: 'review_resilience', provider: 'spawn-review-resilience', label: 'Review Resilience (R4)', tool: 'subagent_review_resilience' },
   { id: 'subagent', provider: 'spawn', label: 'Subagent', tool: 'subagent' },
   { id: 'subagent_fork', provider: 'fork', label: 'Subagent fork', tool: 'subagent_fork' },
 ]
